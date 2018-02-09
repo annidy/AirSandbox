@@ -20,6 +20,10 @@ typedef enum : NSUInteger {
     ASFileItemFile,
 } ASFileItemType;
 
+@interface PAirSandbox ()
+@property (nonatomic, strong) NSMutableArray*                   groupItems;
+@end
+
 @interface ASFileItem : NSObject
 @property (nonatomic, copy) NSString*                 name;
 @property (nonatomic, copy) NSString*                 path;
@@ -87,7 +91,7 @@ typedef enum : NSUInteger {
 - (void)prepareCtrl
 {
     self.view.backgroundColor = [UIColor whiteColor];
-
+    
     _btnClose = [UIButton new];
     [self.view addSubview:_btnClose];
     _btnClose.backgroundColor = ASThemeColor;
@@ -101,7 +105,7 @@ typedef enum : NSUInteger {
     _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     _tableView.delegate = self;
     _tableView.dataSource = self;
-
+    
     _items = @[];
     _rootPath = NSHomeDirectory();
 }
@@ -132,10 +136,19 @@ typedef enum : NSUInteger {
     NSMutableArray* files = @[].mutableCopy;
     
     NSFileManager* fm = [NSFileManager defaultManager];
+    NSArray *groupItems = [PAirSandbox sharedInstance].groupItems;
+    for (ASFileItem *groupItem in groupItems) {
+        NSString *parent = [groupItem.path stringByDeletingLastPathComponent];
+        if ([parent isEqualToString:filePath]) {
+            filePath = _rootPath;
+            break;
+        }
+    }
     
     NSString* targetPath = filePath;
     if (targetPath.length == 0 || [targetPath isEqualToString:_rootPath]) {
         targetPath = _rootPath;
+        [files addObjectsFromArray:groupItems];
     }
     else
     {
@@ -153,7 +166,7 @@ typedef enum : NSUInteger {
         if ([[path lastPathComponent] hasPrefix:@"."]) {
             continue;
         }
-
+        
         BOOL isDir = false;
         NSString* fullPath = [targetPath stringByAppendingPathComponent:path];
         [fm fileExistsAtPath:fullPath isDirectory:&isDir];
@@ -254,7 +267,6 @@ typedef enum : NSUInteger {
 @interface PAirSandbox ()
 @property (nonatomic, strong) UIWindow*                         window;
 @property (nonatomic, strong) ASViewController*                 ctrl;
-
 @end
 
 @implementation PAirSandbox
@@ -262,12 +274,12 @@ typedef enum : NSUInteger {
 + (instancetype)sharedInstance
 {
     static PAirSandbox* instance = nil;
-
+    
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         instance = [PAirSandbox new];
     });
-
+    
     return instance;
 }
 
@@ -302,4 +314,20 @@ typedef enum : NSUInteger {
     _window.hidden = false;
 }
 
+- (void)addAppGroup:(NSString *)groupId {
+    if (_groupItems == nil) {
+        _groupItems = @[].mutableCopy;
+    }
+    
+    NSURL *groupURL = [[NSFileManager defaultManager]
+                       containerURLForSecurityApplicationGroupIdentifier:groupId];
+    
+    ASFileItem* file = [ASFileItem new];
+    file.path = groupURL.relativePath;
+    file.type = ASFileItemDirectory;
+    file.name = [NSString stringWithFormat:@"%@ %@", @"📁", groupId];
+    [_groupItems addObject:file];
+}
+
 @end
+

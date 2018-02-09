@@ -15,4 +15,7 @@
 - (void)enableSwipe;
 - (void)showSandboxBrowser;
 
+- (void)addAppGroup:(NSString *)groupId;
+
 @end
+
